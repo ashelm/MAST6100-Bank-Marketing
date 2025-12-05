@@ -1,1 +1,1 @@
-# MAST6100-Bank-Marketing-Analysis
+# MAST6100-Bank-Marketing
