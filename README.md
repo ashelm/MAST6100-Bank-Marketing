@@ -13,8 +13,9 @@ The Bank Marketing dataset relates to direct marketing campaigns of a Portuguese
 The datase was created by Paulo Cortez (University of Minho) and Sergio Moro (ISCTE-IUL) in 2012. It is publicly available for research and can be found [here](https://archive.ics.uci.edu/dataset/222/bank+marketing).
 
 There are two datasets: 
-      1) bank-full.csv with all examples, ordered by date (from May 2008 to November 2010).
-      2) bank.csv with 10% of the examples (4521), randomly selected from bank-full.csv.
+
+  1) bank-full.csv with all examples, ordered by date (from May 2008 to November 2010).
+  2) bank.csv with 10% of the examples (4521), randomly selected from bank-full.csv.
 
 The classification goal is to predict whether a client will subscribe to a term deposit (y).
 
