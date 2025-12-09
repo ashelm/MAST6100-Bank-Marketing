@@ -19,8 +19,8 @@ There are two datasets:
 The classification goal is to predict whether a client will subscribe to a term deposit (y).
 
 ## Field Description
-Input variables:
- ### Bank client data
+### Input variables:
+ ### Bank client data:
    1. age (numeric)
    2. job : type of job (categorical: "admin.","unknown","unemployed","management","housemaid","entrepreneur","student","blue-collar","self-employed","retired","technician","services") 
    3. marital : marital status (categorical: "married","divorced","single"; note: "divorced" means divorced or widowed)
@@ -36,7 +36,7 @@ Input variables:
   11. month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
   12. duration: last contact duration, in seconds (numeric)
   
-   #### Other attributes:
+   ### Other attributes:
   13. campaign: number of contacts performed during this campaign and for this client (numeric, includes last contact)
   14. pdays: number of days that passed by after the client was last contacted from a previous campaign (numeric, -1 means client was not previously contacted)
   15. previous: number of contacts performed before this campaign and for this client (numeric)
