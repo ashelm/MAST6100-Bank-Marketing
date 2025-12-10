@@ -10,7 +10,7 @@
 The Bank Marketing dataset relates to direct marketing campaigns of a Portuguese bank insituition. The campaigns were conducted via phone calls, often requiring multiple contacts with the same client to determine whether they would subscribe to a term deposit. The goal of this project is to analyse the dataset to identify patterns and trends in client behaviour and develop predictive models to forecast whether a client is likely to subscribe to a term deposit based on their demographic and campaign related attributes.
 
 ## Data Source
-The datase was created by Paulo Cortez (University of Minho) and Sergio Moro (ISCTE-IUL) in 2012. It is publicly available for research and can be found [here](https://archive.ics.uci.edu/dataset/222/bank+marketing).
+The datase was created by Paulo Cortez (University of Minho) and Sérgio Moro (ISCTE-IUL) in 2012. It is publicly available for research and can be found [here](https://archive.ics.uci.edu/dataset/222/bank+marketing).
 
 There are two datasets: 
 
