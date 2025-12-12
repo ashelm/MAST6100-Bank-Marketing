@@ -1,0 +1,749 @@
+---
+title: "Bank Markerting analysis"
+author: "Ashel Munemo"
+date: "2025-12-05"
+output: html_document
+---
+```{r}
+# install and load packages
+install.packages("tidyverse")
+install.packages("janitor")
+install.packages("dplyr")
+install.packages("MASS")
+install.packages("pROC")
+install.packages("tree")
+install.packages("caret")
+install.packages("gbm")
+install.packages("keras3")
+```
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(dplyr)
+library(MASS)
+library(pROC)
+library(tree)
+library(caret)
+library(gbm)
+library(keras3)
+```
+
+```{r}
+# IMPORT AND INSPECT THE DATA
+
+# read the data into R
+bank <- read.csv("bank-full.csv", sep=";")
+
+# check the dimensions of the dataset (rows = number of observations, columns = number of variables)
+dim(bank)
+
+# Display the first few rows of the data
+head(bank)
+
+# Examine the data structure and column types
+str(bank)
+
+# Generate a summary of each variable.
+summary(bank)
+
+```
+```{r}
+# DATA QUALITY CHECK
+
+# check for missing values in the dataset
+sum(is.na(bank))
+
+# ensure all variables are correctly encoded, factors are used for categorical data, while numeric types are kept for continuous variables
+bank <- bank %>%
+  mutate(across(c(job, marital, education, default, housing, loan, contact, month, poutcome, y), as.factor))
+
+bank <- bank %>%
+  mutate(across(c(age, balance, day, duration, campaign, pdays, previous), as.numeric))
+
+# Display summary statistics for all variables and verify transformations
+summary(bank)
+```
+
+```{r}
+# EXPLORATORY DATA ANALYSIS (EDA)
+# Explore the relationships between the response variable and other predictors.
+
+# find the distribution of the target
+table(bank$y)
+
+# get proportion of each category
+tabyl(bank, y)
+
+# separating the variables into to two groups: numerical and categorical
+numerical_var <-names(bank%>% select(where(is.numeric)))
+numerical_var  # check the variable names
+categorical_var <-names(bank %>% select(where(is.factor)))
+categorical_var <- setdiff(categorical_var, "y") # remove the target (y) from the categorical group
+categorical_var # check the variable names
+
+
+```
+
+
+```{r}
+# Relationship between the numerical variables and y (the target)
+
+for(var in numerical_var){
+# Boxplot of the relationship between the target and the numerical variables
+   plot <- ggplot(bank, aes(x = factor(y), y = bank[[var]], fill = y))+
+    geom_boxplot()+
+    labs(title =paste(var, "vs client subscription(y)"),
+         x = "client subscription",
+         y = var,
+         fill = "y")+
+    theme_minimal()+
+    theme(legend.position ="right")
+  
+  print(plot)
+  
+  # T-test
+  cat("\n T-test for:", var, "\n")
+  t <- as.formula(paste(var, "~y"))
+  print(t.test(t, data = bank))
+
+}
+
+```
+# Numerical variables vs Target variable(y)
+ **age **
+ 
+The boxplot illustrates the difference in age between clients who subscribed to a term deposits and those who didn't.
+
+The median age for clients who subscribed is approximately 38 years, and the median age for clients who didn't subscribe is noticeably higher, at approximately 39 years. This suggests that clients who subscribe to a term deposit tend to be slightly younger than those who don't.
+
+However, a t-test was performed to compare the mean age between clients who subscribed and those who did not. The result was statistically significant (t = -4.32, p=1.60e-05), indicating a meaningful difference between the two groups. Clients who subscribed had a slightly higher mean age of 41.67 than those who did not (40.84). This suggests that age may have a small influence on whether a client subscribes to a term deposit or not.
+
+  **balance **
+The chart demonstrates the distribution of clients' balance based on whether they subscribe to a term deposit or not. 
+
+The median balance of clients who did not subscribe to a term deposit is 417 euros, and the median for subscribers is significantly higher, at 733 euros. This suggests that subscribers tend to have a higher average yearly balance than non-subscribers.
+
+Additionally a t-test was performed to compare the mean balance between clients who subscribed and those who did not. There was strong evidence against the null hypothesis thus we rejected it at 5% significance level (p < 0.05), this indicates a meaningful difference between the two groups of clients exists.
+
+Clients who subscribed had a  higher mean balance (1804.27 euros) than those who did not (1303.72 euro). this suggests that account balance is likely important for predicting whether a client will subscribe to a term deposit.
+
+  **day **
+The charts illustrates the differences in the last contact day of the month between clients who subscribed to a term deposit and those who did not.
+
+The median of clients who subscribed is 15, while the median for those who did not subscribe is 16, which is slightly higher. A t-test was also performed to compare the mean of day between the two groups of clients, and the results was statistically significant (p < 0.05), indicating a meaningful difference between the two groups. Clients who subscribed had a lower mean day (15.16) than those who did not subscribe (15.89). This suggests that the last contact day of the month may have some influence on client subscription.
+
+ **duration **
+The plot compares the difference in duration between clients who subscribed to a term deposit and those who did not. 
+
+The median of clients who subscribed is noticeably higher, at approximately 426 seconds, while the is median for non-subscribers is approximately 164 seconds. This suggests that clients who subscribed tend to last longer on calls than those who do not subscribe.
+
+A t-test was performed to compare the mean duration between clients who subscribed and those who did not, and strong evidence against the null hypothesis was found thus we rejected the null hypothesis at 5% significance level. Clients who subscribed had a much higher mean duration (537.29) than those who didn't (221.18). This suggests that duration of contact is likely very important for predicting whether a client will subscribe a term deposit
+
+  **campaign **
+The boxplot represents the difference in number of contacts performed during a campaign between clients who subscribed to a term deposit and those who did not.
+
+The median was 2 for both groups of clients, those who subscribe to a term deposit and those who did not. 
+
+A t-test was also performed to compare the mean number of contacts during a campaign for subscribers and non-subscribers. The results was highly significant (p < 0.05), indicating a meaningful difference between the two groups. Clients who subscribed had a lower mean number of contact during a campaign (2.14) that those who did not (2.85). The suggests that fewer campaign contacts may be associated with higher subscription likelihood.
+
+  **pdays **
+The chart compared the number of days that passed by after a client was last contacted from a previous campaign, between clients who subscribed and those who did not.
+
+A t-test was performed to compare the mean of pdays, and the result was highly significant (p < 0.05) indicating that a difference between the two groups exists. Clients who subscribed had a higher mean pdays (68.70) than those who did not (36.42). This suggests that the number of days since last contact is likely very important for predicting whether a client subscribes a term deposit or not. 
+
+  **previous **
+The chart demonstrates the distribution of the number of contacts performed before a campaign based on clients who subscribed to a term deposit and those who didn't.
+
+The median of both groups of clients is 0. 
+
+Additionally, a t-test was performed to compare the mean of previous contact between subscribers and non-subscribers. Clients who subscribed had a higher mean (1.17) than those who did not (0.50). The result of the t-test indicated a meaningful difference between the two groups of clients, suggesting that prior engagement is likely important for predicting whether a client will subscribe to a term deposit or not.
+
+
+```{r}
+
+# Categorical variables vs target(y)
+
+for(var in categorical_var){
+  # month ordering
+  if(var == "month"){
+    month_order <- c("jan", "feb", "mar", "apr","may","jun","jul","aug", "sep","oct", "nov", "dec")
+    bank$month <- factor(bank$month, levels = month_order)
+  }
+  
+  # wrap long labels for readability
+  label_var <- bank[[var]]
+  if(var == "job"){
+    label_var <- stringr::str_wrap(label_var, width=20)
+  }
+  
+# Bar chart of the relationship between the target and the categorical variables
+  plot <- ggplot(bank, aes(x = factor(bank[[var]]), fill = y))+
+    geom_bar(position = "dodge")+
+    labs(title =paste("Client Subsciption by", var),
+         x = var,
+         y = "count",
+         fill = "y")+
+    theme_minimal()+
+    theme(legend.position ="right",
+          axis.text.x = element_text(angle = 45, hjust = 1))
+  
+  print(plot)
+  
+  # Chi-Squared test
+  cat("\n chisq test for:", var,"\n")
+  cp <- table(bank[[var]], bank$y)
+  print(chisq.test(cp))
+}
+
+
+  
+```
+# Categorical variables vs target variable|(y)
+ **job **
+This bar chart compares how many clients from each job category subscribed ("yes")or did not subscribe ("no") to the bank's term deposit.
+
+Across all job categories, the number of non-subscribers is much higher than subscribers.
+Blue-collar, management, technician, admin and service jobs have the highest number of clients overall, and show the highest counts of both "yes" and "no". 
+
+Some job groups show relatively higher subscription proportions, for example, retired clients have a noticeably larger proportion of subscribers compared to other job categories. Students and unemployed also show a moderately higher share of subscribers relative to their group size.
+
+Jobs like entrepreneur, housemaid, self-employed, and unknown show a low overall subscription count.
+
+ **marital **
+This chart compares the difference in marital status between clients who subscribe to a bank's term deposit and those who don't.
+
+Across all marital statuses, the number of non-subscribers is consistently much higher than the number of subscribers.
+
+Among these groups, married clients make up the largest portion of the dataset and also have the highest number of subscribers, reflecting their overall higher representation compared to single or divorced clients.
+
+Compared to divorced clients, single clients have a higher overall count and a higher number of subscribers.
+
+ **education **
+Across all education levels, the number of non-subscribers is consistently higher than the number of subscribers.
+
+Clients with a secondary education form the largest group overall and also have the highest number of subscribers compared to other education levels.
+
+Compared to those with primary education, clients with tertiary education show a higher overall count as well as a higher number of subscribers. The unknown education category has the lowest overall count and the lowest number of subscribers among all education levels.
+ **month **
+Across all months of the year, the number of non-subscribers is consistently higher than the number of subscribers. May has the highest overall count ans also a high number of subscribers compared to the other months, followed by July, August, June, November, April, February, and January, in that order.
+
+In contrast, October, September, March and December have the lowest overall count and the lowest number of subscribers. For December and March, the difference between subscriber and non-subscriber counts is relatively small. In March, the number of subscribers is almost equal to the number of non-subscribers.
+
+ **contact **
+The chart compares how many clients from each contact communication type category subscribed ("yes") or did not subscribe ( "no") to the bank's term deposit.
+
+Across all contact categories, the number of non-subscribers is much higher than the number of subscribers.
+
+Among these groups, cellular contact makes up the largest portion of the dataset and also has the highest number of subscribers, reflecting its overall representation compared to telephone and unknown contact types.
+
+Compared to telephone contact, unknown contact has a higher overall count and a slightly higher number of subscribers.
+ 
+ **housing **
+This bar chart compares how many clients in each housing-loan category subscribed or did not subscribe to the bank's term deposit.
+
+Across both housing status categories, the number of non-subscribers is much higher than subscribers. Clients with a housing loan represent the largest group overall and therefore show the highest count of non-subscribers.
+
+However, clients without a housing loan have a higher number of subscribers compared to those with a housing loan. The "no" housing loan group shows a noticeably higher proportion of subscribers relative to the "yes" group.
+
+ **loan **
+This bar chart compares how many clients in each loan-status category subscribed or did not subscribe to the bank's term deposit.
+
+Across both loan categories, the number of non-subscribers is much higher than the number of subscribers. Clients without a loan form the largest group overall and therefore show the highest count of non-subscribers.
+
+However, the "no" loan group also has the highest number of subscribers, probably because it is much larger than the "yes loan" group. Clients with a loan show a much smaller overall count and a very small number of subscribers.
+
+Overall, the "no loan" group displays a higher absolute number of subscribers, but in both categories, non-subscribers clearly dominate.
+
+ **poutcome **
+The charts illustrates the differences in previous campaign outcomes between clients who subscribed and those who did not.
+
+Across all categories, the number non-subscribers is consistently higher than the number of subscribers. Among, these groups, unknown outcome makes up the largest portion of the dataset and also have the highest number of subscribers, reflecting their overall higher representation compared to the clients with different previous campaign outcomes.
+
+While the remaining categories have significantly low subscribers compared to non-subscribers, success outcome has a slightly noticeable higher proportion of subscribers than non-subscribers.
+
+**chisq test**
+Chi-squared test were also conducted to examine the association between each categorical predictor and the subscription target (y). All variables showed a statistically significant relationship, suggesting that these categorical variables are likely important for predicting whether a client subscribes to a term deposit.
+
+```{r}
+# Train/test split
+
+# Divide the dataset into training and testing subsets to enable model building
+
+set.seed(123)        # set a random seed for reproducibility
+n <- nrow(bank)  # determine the number of observations in the dataset
+
+train_index <- sample(1:n, size = 0.7 * n)   # randomly select 70% of the data to be used for the training set
+train_data <- bank[train_index,]    #create the training dataset using the sampled indices
+test_data <- bank[-train_index, ]    # create the testing dataset using the remaining indices
+
+```
+
+# TRAIN/ TEST SPLIT
+The dataset was divided into training and testing subsets to support model building and performance evaluation. Specifically, 70% of the data was allocated to the training set, which is used to develop and fit the predictive model, while the remaining 30% was reserved for the test set, which serves to evaluate how well the model performs to unseen data. This approach helps prevent overfitting by ensuring that the model's accuracy is not solely based on the data it was trained on. By maintaining a fixed random seed, the split remains reproducible, ensuring consistency in results across multiple runs.
+
+```{r}
+# Subset model selection using Stepwise Regresssion
+
+# identify the most significant predictors of client subscription using logistic regression
+
+# null model
+null_model <- glm(y ~ 1,
+                  family = binomial,
+                  data = train_data)
+
+# full model
+full_model <- glm(y ~ .,
+                  family = binomial,
+                  data = train_data)
+
+# stepwise selection
+
+#The stepAIC() function performs stepwise model selection using Akaike Information Criterion (AIC)
+
+
+best_model <- stepAIC(full_model)
+
+
+# Model summary
+
+# show which predictors remain and how strongly they influence the likelihood of a client subscribing a term deposit
+
+summary(best_model)
+```
+# Model selection
+A stepwise subset selection procedure using AIC was applied to identify the most influential predictors of whether a client subscribes to a term deposit. The procedure began with the full model containing all predictors and iteratively removed variables that did not improve model performance.
+
+The selection was performed using stepAIC() function, which balances model complexity and goodness of fit.
+
+During model selection, several predictors were removed as they did not significantly reduce AIC.The final model retained a broad set of predictors, these include:
+ - job, marital status, education, balance, housing, loan, contact, day and month of contact, duration, campaign and outcome of previous marketing campaign.
+
+The final model produced the lowest AIC value, which was 15170.23, indicating a good balance of fit and parsimony.
+
+**parameter significance and coefficient estimates**
+The stepwise logistic regression model identifies several significant predictors of client subscription based on their p-values. The most significant predictors include:
+  -duration
+  -balance
+  -housing and personal loans
+  -campaign, contact (contactunknown) 
+  -month
+  -previous campaign success (poutcomesuccess)
+
+These variables have the strongest influence on the likelihood that a client will subscribe to a term deposit. 
+
+Other variables such as jobentrepreneur, jobunemployed, jobunknown, poutcomeunknown, monthfeb, and maritalsingle are not statistically significant and thus do not meaningfully predict subscription in this model. 
+ 
+The coefficient estimates indicate both the direction and relative impact of each predictor's effect on subscription likelihood:
+
+ -Positive coefficients indicate an increase in the probability of subscription. Predictors with positive effects include:
+ 
+  -poutcomeother,poutcomesuccess
+  -duration
+  -month (sep, oct, mar, jun, and dec)
+  -day
+  -balance 
+  -education
+  -marital(single) 
+  -job(student and retired)
+
+ -Negative coefficients indicate a decrease in subscription likelihood. For example clients with existing loans, certain job types, or who are married are less likely to subscribe to a term deposit.
+
+Overall these estimates suggest that clients who have had successful prior campaigns, higher average yearly balance, longer contact duration, or are single/student/retired are more likely to subscribe, whereas those with loan or specific job/ marital statuses are less likely to do so.
+ 
+```{r}
+# Odds ratios
+exp(coef(best_model)) 
+
+# Confidence Interval
+exp(confint(best_model))
+```
+
+```{r}
+# summary table
+coef_table <- data.frame(
+  Coefficient = coef(best_model),
+  Odds_Ratio = exp(coef(best_model)),
+  CI_Lower = exp(confint(best_model)[,1]),
+  CI_Upper = exp(confint(best_model)[,2]),
+  P_Value = summary(best_model)$coefficients[,4]
+)
+
+coef_table
+
+```
+
+# Odds ratio (OR) and confidence intervals (CI)
+  -Intercept: (OR = 0.074, CI = [0.054, 0.100])
+The baseline odds of subscription when all predictors are at their reference levels are very low.
+
+  -Job:
+Retired and student clients have higher odds of subscribing, while blue-collar, housemaids, technicians and services have lower odds or subscribing compared to the reference.
+Other job categories, such as management, have CIs crossing 1, so their effect is not statistically significant.
+
+  -Marital status
+Married clients have slightly lower odds of subscribing while single clients are not statistically significant.
+
+  -Education
+Higher education levels increases subscription odds.
+
+  -Balance
+Higher balance slightly increases odds.
+
+  -Housing and personal loan
+Having a housing or personal loan reduces the likelihood of subscribing
+ 
+  -Contact
+Telephone contact lowers odds slightly while unknown contact drastically reduces odds.
+
+  -Month
+March, June, September, October, and December have high odds indicating that subscriptions peaks in these months. In contrast, clients are less likely to subscribe in January, May, July, August, and November.
+
+  -Day
+Each additional day of the month slightly increases odds.
+
+  -Duration
+Longer contact duration slightly increases subscriptions odds.
+
+  -Campaign
+More contacts during a campaign reduces odds.
+
+  -Previous Campaign Outcome
+Clients who previously subscribed have dramatically higher odds of subscribing while previous campaign outcome "other" has a slight positive effect on subscription.
+
+```{r}
+# Logistic Regression
+# Predict the probability of a client subscribing a term deposit
+
+
+# Predicted probabilities
+pred_c <- predict(best_model,
+                     newdata = test_data,
+                     type = "response")
+ 
+# add predicted probabilities to dataset
+test_data$pred_prob <- pred_c
+
+#Classify client subscription using 0.2 cutoff
+test_data$pred_csubs <- ifelse(test_data$pred_prob >=0.2, "yes", "no")
+test_data$pred_csubs <- factor(test_data$pred_csubs, levels = c("no", "yes")) # converts the predictions into a factor
+
+head(test_data)  # inspect output
+```
+
+```{r}
+# Model Evaluation
+# Assess how well the logistic regression model predicts whether a client subscribes a term deposit based on test data
+
+
+#confusion matrix
+# the confusion matrix compares the model's predictions against the true client subscriptions
+conf_matrix <- table(test_data$pred_csubs, test_data$y)
+conf_matrix
+
+#extract values
+TP  <- conf_matrix["yes", "yes"]   #true positive - correctly predicted a positive outcome
+TN  <- conf_matrix["no", "no"]   # true negative - model correctly predicted a negative outcome
+FP  <- conf_matrix["yes", "no"]  #false positive - model incorrectly predicted a positive outcome
+FN   <- conf_matrix["no", "yes"] # false negative- model incorrectly predicted a negative outcome
+
+# metrics based on the confusion matrix 
+accuracy <- (TP + TN)/ (TP+TN+FP+FN)  # how many predictions the model got right
+precision <- TP /(TP+FP) # focuses on the quality of the model's positive predictions
+recall <- TP /(TP+FN)  # measures how good the model is at predicting positives
+f1_score <- 2*(precision * recall)/( precision + recall)  #model's overall performance 
+
+metrics <- data.frame(Accuracy = accuracy,
+           Precision = precision,
+           Recall = recall,
+           F1_Score = f1_score)
+metrics   # summary of model's performance
+```
+# Threshold tuning
+
+Because the dataset is highly imbalanced, using the default classification cutoff of 0.5 resulted in poor recall(0.347). To address this, several alternative thresholds were evaluated. Lowering the cutoff increased recall at the cost of precision, while higher cutoffs increased precision but reduced recall. The threshold of 0.2 produced the highest F1-score (0.574), representing the best balance between precision (0.496) and recall (0.681). Therefore, a cutoff of 0.2 was selected as the optimal threshold for the logistic regression model.
+
+```{r}
+# evaluate model performance against all classification thresholds
+roc_obj <- roc(test_data$y, test_data$pred_prob)
+auc_value <- auc(roc_obj)
+plot(roc_obj)
+auc_value
+```
+#Model evaluation
+
+The logistic regression demonstrates strong discriminative ability, as evidenced by the ROC curve and the area under the curve (AUC = 0.9027). This indicates that the model can correctly distinguish subscribers over 90% of the time. Combined with F1-score analysis and threshold tuning , this supports the chosen cutoff of 0.2 as optimal for balancing precision and recall.
+
+```{r}
+# DECISION TREES
+
+# fit a classification tree in order to predict y using all variables
+tree.bank <- tree(y ~., bank)
+
+# list the variables used as internal nodes in the tree, the number of terminal nodes, and the (training) error rate
+summary(tree.bank)
+```
+# Classification tree results
+A classification tree model was fitted using all variable to classify whether a client subscribes to a term deposit. Only four variables were selected by the model during tree construction, indicating they have the strongest discriminatory power. These variables include duration, poutcome, month, and contact.
+
+The final tree contains nine terminal nodes, suggesting a moderately complex structure that captures key patterns in the data without becoming excessively deep.
+
+Model performance metrics show a residual mean deviance of 0.4884, reflecting a good overall fit, and a misclassification error rate of 10.98%, meaning that the model correctly classified about 89% of the observations. The prominence of duration confirms its role as a strong predictor, consistent with findings from the logistic regression analysis.
+
+```{r}
+plot(tree.bank)
+text(tree.bank, pretty=0)
+```
+```{r}
+# print output corresponding to each branch of the tree
+tree.bank
+```
+
+```{r}
+# build the tree using the training set, and evaluate its performance on the test data
+
+tree.bank <- tree(y~., data = train_data)
+tree.pred <- predict(tree.bank, newdata = test_data, type="class")
+table(tree.pred, test_data$y)
+```
+
+```{r}
+# Consider whether pruning might lead to improved results
+
+set.seed(3) # set random seed
+cv.bank <- cv.tree(tree.bank, FUN=prune.misclass)
+names(cv.bank)
+cv.bank
+```
+# considering pruning the tree
+The pruning sequence shows how the classification tree performs at different levels of complexity. Three candidate subtree sizes were evaluated, a tree with 10 terminal nodes, a pruned version with 5 nodes, and the root-only model with 1 node.
+
+The corresponding deviance's indicate that both the 10-node and 5-node trees achieve the same deviance value of 3403, while collapsing the tree to a single node leads to a substantially higher deviance of 3733, reflecting, reflecting poor fit.
+
+the cost-complexity parameter k further supports, the full 10-node tree has k=-infinity, meaning no penalty is applied, the 5-node tree is selected at k=0, representing the smallest tree that retains the best performance, and the 1-node tree is only chosen once the penalty becomes large (k = 85.5).
+
+Because the 5-node subtree achieves the lowest deviance with the simplest structure, it is the optimal pruning choice under the misclassification criterion.
+
+
+```{r}
+# plot the error rate as a function of both size and k
+par(mfrow=c(1,2))
+plot(cv.bank$size, cv.bank$dev, type="b")
+plot(cv.bank$k, cv.bank$dev, type="b")
+```
+
+
+```{r}
+# prune the tree to obtain the 5-node tree
+prune.bank = prune.misclass(tree.bank, best=5)
+plot(prune.bank)
+text(prune.bank, pretty=0)
+```
+
+```{r}
+# how well the pruned tree performs on the test data set.
+tree.pred = predict(prune.bank, test_data, type="class")
+table(tree.pred, test_data$y)
+```
+
+```{r}
+# Model Evaluation
+#confusion matrix
+
+conf_matrix <- confusionMatrix(tree.pred, test_data$y)
+conf_matrix
+
+```
+# Confusion matrix
+The classification tree achieves an overall accuracy of 88.99%, correctly classifying the majority of observations. The 95% confidence interval for accuracy is (0.8845, 0.8951), and the accuracy is significantly higher than the no-information rate, indicating that the model performs better than simply predicting the majority class.
+
+The Kappa statistic of 0.437 suggests moderate agreement between predicted and actual classes beyond chance. Examination of class-specific metrics shows that the model is highly effective at identifying the "no" class, with a sensitivity of 94.41% and a positive predictive value of 93.23%, but less effective at detecting the "yes" class, as reflected in the specificity of 47.45% and a negative predictive value of 52.55%.
+
+the balance accuracy of 70.93% accounts for this class imbalance, providing a more equitable assessment of performance. Overall, the model is strong at predicting clients who do not subscribe, but shows reduced ability to identify those who do.
+
+```{r}
+# evaluate model performance against all classification thresholds
+tree_prob <- predict(prune.bank, test_data, type="vector")[, "yes"]
+roc_t <- roc(test_data$y, tree_prob, levels=c("no","yes"), direction="<")
+plot(roc_t)
+auc(roc_t)
+```
+# model performance
+The model's performance is sharply bowed toward the top-left corner, indicating strong overall discrimination between clients who subscribed and those who did not. This visual pattern reflects the model's ability to achieve high sensitivity while maintaining reasonable specificity, reinforcing the AUC value of 0.7827. In other words, the tree is effective at correctly identifying non-subscribers while still capturing a substantial portion of subscribers.
+
+```{r}
+# BOOSTING 
+set.seed(123) # set a random seed for reproducibility
+bank$yboost <- ifelse(bank$y == "yes", 1, 0) # convert target variable into 0/1
+train_data$yboost <- ifelse(train_data$y == "yes", 1, 0)
+test_data$yboost  <- ifelse(test_data$y == "yes", 1, 0)
+
+# remove the original target variable from the dataset
+train_boost <- subset(train_data, select = -y)  
+test_boost <- subset(test_data, select = -y)
+
+# fit a gradient boosting model to predict the probability that a client subscribes to a term deposit
+boost.bank <-gbm(yboost~., data=train_boost, distribution= "bernoulli", n.trees=50, interaction.depth=2)
+
+# produce the relative influence plot and summary table showing how important each predictor is in the boosting model
+summary(boost.bank)
+```
+
+# variable importance
+The variable importance results show that contact duration is by far the strongest predictor of whether a client subscribes. This is followed by the previous campaign outcome, which indicates that clients who engaged successfully prior, are likely to subscribe again. 
+
+The month of contact also plays an important role, suggesting seasonal or timing effects in client responses. Other variables such as contact, housing loan, age, day of the month, and pdays contribute modestly to the model. Meanwhile, job type and average yearly balance have very little influence on predictions.
+
+Overall, the model relies most heavily on contact duration, previous campaign outcome, and month of contact when predicting subscription outcomes.
+
+```{r}
+# produce partial dependence plots for selected predictors
+par(mfrow=c(2,4))
+plot(boost.bank, i="duration")
+plot(boost.bank, i="poutcome")
+plot(boost.bank, i="month")
+```
+
+```{r}
+# use the boosted model to predict y on the test set
+yhat.boost <- predict(boost.bank, newdata=test_boost, n.trees=50, type="response") # store predicted probabilities
+pred <- ifelse(yhat.boost >= 0.5,1,0) # convert the predicted probabilities into class labels
+
+```
+
+```{r}
+# fit a tuned gradient boosting model
+boost.bank2 <- gbm(yboost~., data=train_boost, distribution="bernoulli", n.trees=5000, interaction.depth = 2, shrinkage = 0.1, verbose = F)
+# store predicted probabilities
+yhat.boost2 <- predict(boost.bank2, newdata=test_boost, n.trees=5000, type="response")
+pred2 <- ifelse(yhat.boost2 >= 0.5,1,0)
+
+```
+
+```{r}
+# model evaluation
+# confusion matrix
+confusionMatrix(factor(pred), factor(test_boost$yboost),positive="1")
+confusionMatrix(factor(pred2), factor(test_boost$yboost),positive="1")
+```
+# model evaluation
+The boosted models show strong classification performance, with both versions achieving accuracy of about 90%. However, the sensitivity remains low , due to the imbalanced nature of the dataset.
+
+The first boosted model achieved a sensitivity of 0.325, meaning it correctly identified about one-third of actual subscribers, while maintaining a very high specificity of 0.977. This shows that the model was strong in detecting non-subscribers but missed many true positives.
+
+A tuned version with 50 trees, interaction depth 2, and shrinkage 0.1 produced only a slight improvement. Sensitivity increased to 0.337, while specificity remained high at 0.976, and balanced accuracy rose modestly from 0.651 to 0.657. This model was still precise when predicting a subscriber, but continued to miss a large proportion of them.
+
+To improve performance further, I increased the number of boosting iterations to 5000 trees using the same tuning parameters. This substantially improved detection of the positive class, sensitivity increased to 0.490, balanced accuracy rose to 0.727, and specificity remained high at 0.964. This version offers the best overall trade-off between correctly identifying subscribers and maintaining strong overall predictive accuracy, an therefore it is selected as the final tuned model.
+
+
+```{r}
+# evaluate how well the model separates clients who subscribes from those who didn't
+roc_yhat <- roc(test_boost$yboost, yhat.boost)
+auc(roc_yhat)
+plot(roc_yhat)
+```
+
+```{r}
+roc_yhat2 <- roc(test_boost$yboost, yhat.boost2)
+auc(roc_yhat2)
+plot(roc_yhat2)
+```
+# model performance
+
+The ROC curve for the first boosted model bends strongly toward the top-left corner, indicating food discrimination between subscribers and non-subscribers. This is supported by an AUC of 0.9043, which reflects excellent model performance despite low sensitivity. The tuned boosted model shows further improvements, its ROC curve also bows sharply toward the top-left, but with a noticeably larger area underneath. The AUC increases to 0.9295, indicating stronger classification ability and better separation between the negative and positive classes. this reinforces the improvements observed in sensitivity and balanced accuracy, confirming that the tuned model provides superior predictive performance.
+
+
+```{r}
+# display the distribution of predicted probabilities
+summary(yhat.boost)
+summary(yhat.boost2)
+```
+# Distribution of predicted probabilities
+The first set of summary statistics shows the distribution of predicted probabilities for the initial boosted model. The minimum predicted probability is 0.019, while the maximum is 0.937, indicating that the model assigns relatively confident probabilities across a wide range. The median probability, and the 1st and 3rd quartiles show that most predictions are low, which is expected given that non-subscribers dominate the dataset. The mean probability reflects the overall low subscription rate.
+
+The second set of summary statistics represents the tuned boosted model. This model produces a wider range of predicted probabilities, from extremely low to nearly certain. The median probability and lower quartile indicate that most predictions remain low, but the maximum suggests that the tuned model is better at pushing likely subscribers toward very high predicted values. The mean remains nearly identical to the first model, consistent with the same underlying prevalence.
+
+Overall, the tuned model shows greater separation between low and high predicted probabilities, which is consistent with its improved ROC, AUC, and sensitivity. It indicates that the tuned model is better at distinguishing subscribers from non-subscribers.
+
+
+```{r}
+# DEEP LEARNING
+# a single layer network
+
+# clean data for deep learning
+bank_dL <- subset(bank, select = -y)
+bank_dL
+# create x and y
+x <- model.matrix(yboost ~. -1, data = bank_dL) %>% scale()
+y <- bank_dL$yboost
+
+# train/test split
+set.seed(123)
+n <- nrow(bank_dL)
+train_index <- sample(1:n, size= 0.7 * n)
+x_train <- x[train_index, ]
+x_test <- x[-train_index, ]
+y_train <- y[train_index]
+y_test <- y[-train_index]
+```
+
+```{r}
+# define neural network for binary classification
+modnn <- keras_model_sequential() %>%
+   layer_dense(units = 50, activation = "relu", input_shape = ncol(x)) %>%
+   layer_dropout(rate = 0.4) %>%
+   layer_dense(units = 1, activation = "sigmoid")
+```
+
+```{r}
+# compile the neural network
+modnn %>% compile(
+  loss = "binary_crossentropy",
+  optimizer = optimizer_rmsprop(),
+  metric = c("accuracy")
+)
+```
+
+```{r}
+# fit the neural network on the training data, using the test set for validation
+history <- modnn %>% fit(
+  x_train, y_train,
+  epochs = 150, batch_size = 32,
+  validation_data = list(x_test, y_test)
+)
+# plot the training history
+plot(history)
+```
+
+```{r}
+# use trained neural network to predict probabilities on the test set
+npred <- predict(modnn, x_test)
+npred_class <- ifelse(npred >= 0.2,1,0) # convert predicted probabilities into binary class labels
+
+```
+
+```{r}
+# model evaluation
+# confusion matrix
+confusionMatrix(
+  factor(npred_class),
+  factor(y_test), 
+  positive = "1"
+)
+```
+# confusion matrix
+The neural network was trained on the scaled features and evaluated using a classification threshold of 0.2 to prioritise detection of subscribers. At this threshold, the model correctly classified 1,215 of 1,566 actual subscribers, achieving a sensitivity of 77.6%, a substantial improvement from the 33.45 at the 0.5 threshold. Specificity remains high at 87.9%, indicating that 10,545 of 11,998 non-subscribers are correctly identified.
+
+Overall, accuracy is 86.7%, which slightly lower than at higher thresholds, reflecting trade-off between correctly identified positives and maintaining majority-class accuracy. The balanced accuracy of 83.7% indicates that the model now performs more equitably across both classes. 
+
+Threshold tuning clearly demonstrated that the neural network has strong discriminative and that adjusting the decision threshold is an effective method to prioritise detection of the minority positive class without excessively sacrificing accuracy.
+
+```{r}
+# evaluate model performance
+roc_dl <- roc(y_test, npred)
+plot(roc_dl)
+auc(roc_dl)
+```
+
+# ROC and AUC
+The ROC curve for the neural network strongly bows toward the top-left corner, indicating excellent discriminative ability between subscribers and non-subscribers. The AUC of 0.9086 confirms that the model can effectively rank positive cases higher than negative cases, demonstrating that it reliably separates the two classes across all classification thresholds.
